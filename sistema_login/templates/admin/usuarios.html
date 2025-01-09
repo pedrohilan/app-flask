@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Usuários</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cadastro_terapeuta.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/formulario_napese.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box" style="max-width: 800px;">
+            <div class="login-header">
+                <h2>Listagem de Usuários</h2>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}" style="position: relative; padding-right: 2rem; margin-bottom: 1rem;">
+                            {{ message }}
+                            <button 
+                                style="position: absolute; right: 0.7rem; background: none; border: none; font-size: 1.2rem; cursor: pointer;" 
+                                onclick="fecharAlerta(this)">
+                                &times;
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Botão para abrir o modal de criação de novo usuário -->
+            <button onclick="openCreateUserModal()" class="btn-nav btn-submit-terapeuta">Criar Novo Usuário</button>
+
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Email</th>
+                        <th>Tipo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in usuarios['items'] %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.tipo_usuario }}</td>
+                            <td>
+                                <!-- Botão de editar com tooltip -->
+                                <button class="action-btn edit-btn" 
+                                        onclick="openEditUserModal('{{ user.id }}', '{{ user.email }}')" 
+                                        title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                
+                                <!-- Botão de remover com tooltip -->
+                                <form action="{{ url_for('remover_usuario', user_id=user.id) }}" 
+                                      method="POST" 
+                                      style="display:inline;">
+                                    {{ form.csrf_token }}
+                                    <button type="submit" 
+                                            class="action-btn delete-btn" 
+                                            onclick="return confirm('Tem certeza que deseja remover este usuário?')" 
+                                            title="Remover">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                
+                                <!-- Botão de vincular pacientes, visível apenas para terapeutas -->
+                                {% if user.tipo_usuario == 'terapeuta' %}
+                                    <button class="action-btn link-btn" 
+                                            onclick="openVincularPacientesModal('{{ user.id }}')"
+                                            title="Vincular Pacientes">
+                                        <i class="fas fa-link"></i>
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>                
+            </table>
+
+            <div class="pagination">
+                {% if usuarios.has_prev %}
+                    <a href="{{ url_for('admin_usuarios', page=usuarios.prev_num) }}">Anterior</a>
+                {% endif %}
+                <span>Página {{ usuarios.page }} de {{ usuarios.pages }}</span>
+                {% if usuarios.has_next %}
+                    <a href="{{ url_for('admin_usuarios', page=usuarios.next_num) }}">Próxima</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="editModal" style="display:none;">
+        <div class="modal-content form-section">
+            <span class="close" onclick="closeEditUserModal()">&times;</span>
+            <h3>Editar Usuário</h3>
+            <form action="{{ url_for('editar_usuario') }}" method="POST">
+                {{ form.csrf_token }}
+                
+                <input type="hidden" id="user_id" name="user_id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password">Senha:</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                </div>
+
+
+                <div>
+                    <button type="submit" class="action-btn edit-btn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Criação de Novo Usuário -->
+    <div id="createUserModal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeCreateUserModal()">&times;</span>
+            <h3>Criar Novo Usuário</h3>
+            <form action="{{ url_for('criar_usuario') }}" method="POST">
+                {{ form.csrf_token }}
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tipo_usuario">Tipo de Usuário:</label>
+                        <select id="tipo_usuario" name="tipo_usuario" required>
+                            <option value="admin">Administrador</option>
+                            <option value="terapeuta">Terapeuta</option>
+                            <option value="paciente">Paciente</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password">Senha:</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" class="action-btn edit-btn">Criar Usuário</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Vincular Pacientes -->
+    <div id="vincularPacientesModal" style="display:none;">
+        <div class="modal-content form-section">
+            <span class="close" onclick="closeVincularPacientesModal()">&times;</span>
+            <h3>Vincular Pacientes</h3>
+            <div id="pacientes-list">
+                <h4>Pacientes Vinculados</h4>
+                <ul id="pacientes-ul">
+                    <!-- Pacientes vinculados serão adicionados aqui -->
+                </ul>
+            </div>            
+            <div>
+                <form id="vincularPacientesForm" action="{{ url_for('vincular_paciente') }}" method="POST">
+                    {{ form.csrf_token }}
+                    <input type="hidden" id="terapeuta_id" name="terapeuta_id">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="novo_paciente">Adicionar Paciente:</label>
+                            <input type="text" id="novo_paciente" name="novo_paciente" placeholder="Digite o email do paciente">
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn-nav btn-submit-terapeuta">Vincular</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <form action="{{ url_for('remover_vinculo') }}" method="POST" style="display:none;" id="formRemoverVinculo">
+        {{ form.csrf_token }}
+        <input type="hidden" name="terapeuta_id" id="terapeuta_remover_id">
+        <input type="hidden" name="paciente_id" id="paciente_remover_id">
+        <button type="submit" id="btnRemoverVinculo">
+        </button>
+    </form>
+    
+
+
+    <script>
+        // Função para abrir o modal e preencher os campos
+        function openEditUserModal(userId, email) {
+            document.getElementById('editModal').style.display = "flex";
+            document.getElementById('email').value = email;  // Preenche o email no formulário
+            document.getElementById('user_id').value = userId;  // Preenche o ID do usuário
+        }
+
+        // Função para fechar o modal
+        function closeEditUserModal() {
+            document.getElementById('editModal').style.display = "none";
+        }
+
+        function openCreateUserModal() {
+            document.getElementById('createUserModal').style.display = "flex";
+        }
+
+        function closeCreateUserModal() {
+            document.getElementById('createUserModal').style.display = "none";
+        }
+
+        function openVincularPacientesModal(terapeutaId) {
+            document.getElementById('vincularPacientesModal').style.display = 'flex';
+            document.getElementById('terapeuta_id').value = terapeutaId;
+
+            // Fazer a requisição AJAX para buscar pacientes
+            fetch(`/get_pacientes/${terapeutaId}`)
+                .then(response => response.json())
+                .then(pacientes => {
+                    const pacientesUl = document.getElementById('pacientes-ul');
+                    pacientesUl.innerHTML = ''; // Limpar a lista anterior
+
+                    if (pacientes.length === 0) {
+                        pacientesUl.innerHTML = '<li>Nenhum paciente vinculado.</li>';
+                    } else {
+                        pacientes.forEach(paciente => {
+                        const pacienteItem = document.createElement('li');
+                        pacienteItem.textContent = paciente.email;
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.textContent = '✖';
+                        removeBtn.classList.add('action-btn-list');
+                        removeBtn.classList.add('delete-btn');
+                        removeBtn.title = 'Remover vínculo';
+                        removeBtn.onclick = () => removerVinculo(terapeutaId, paciente.id);
+
+                        pacienteItem.appendChild(removeBtn);
+                        pacientesUl.appendChild(pacienteItem);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar pacientes:', error);
+                });
+        }
+
+        function removerVinculo(terapeutaId, pacienteId) {
+            if (!confirm('Tem certeza que deseja remover este vínculo?')) return;
+
+            // Definindo os valores dos campos ocultos
+            document.getElementById('terapeuta_remover_id').value = terapeutaId;
+            document.getElementById('paciente_remover_id').value = pacienteId;
+
+            // Submetendo o formulário programaticamente
+            document.getElementById('formRemoverVinculo').submit();
+        }
+
+        function closeVincularPacientesModal() {
+            document.getElementById('vincularPacientesModal').style.display = 'none';
+        }
+
+        // Fechar o modal se o usuário clicar fora da área do modal
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('editModal')) {
+                closeEditUserModal();
+            }
+            if (event.target == document.getElementById('createUserModal')) {
+                closeCreateUserModal();
+            }
+            if (event.target == document.getElementById('vincularPacientesModal')) {
+                closeVincularPacientesModal();
+            }
+        }
+
+        function fecharAlerta(botao) {
+            const alerta = botao.parentElement;
+            alerta.style.transition = "opacity 0.5s";
+            alerta.style.opacity = "0";
+
+            setTimeout(() => {
+                alerta.remove();
+            }, 500); // Tempo para a animação de transição antes de remover o elemento
+        }
+    </script>
+</body>
+</html>

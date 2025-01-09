@@ -1,0 +1,190 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #f5f6fa;
+}
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header h1 {
+    color: #2c3e50;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.login-header p {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+}
+
+form {
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: #34495e;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #dcdde1;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.form-group-checkbox {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.form-group-checkbox input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.form-group-checkbox label {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+}
+
+.divider {
+    text-align: center;
+    margin: 20px 0;
+    position: relative;
+}
+
+.divider::before,
+.divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 45%;
+    height: 1px;
+    background-color: #dcdde1;
+}
+
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}
+
+.divider span {
+    background-color: white;
+    padding: 0 10px;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.links {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.links a {
+    color: #3498db;
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: inline-block;
+    margin: 5px 0;
+}
+
+.links a:hover {
+    text-decoration: underline;
+}
+
+.flash-messages {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 20px;
+}
+
+.flash {
+    padding: 12px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.flash-success {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.flash-error {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.flash-info {
+    background-color: #3498db;
+    color: white;
+}
+
+@media (max-width: 480px) {
+    form {
+        padding: 20px;
+    }
+    
+    .login-header h1 {
+        font-size: 2rem;
+    }
+    
+    .login-header p {
+        font-size: 1rem;
+    }
+}
