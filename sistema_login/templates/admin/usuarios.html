@@ -183,7 +183,10 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="novo_paciente">Adicionar Paciente:</label>
-                            <input type="text" id="novo_paciente" name="novo_paciente" placeholder="Digite o email do paciente">
+                            <select id="novo_paciente" name="novo_paciente" class="form-control">
+                                <option value="" disabled selected>Selecione um paciente</option>
+                                <!-- As opções serão adicionadas dinamicamente -->
+                            </select>                            
                         </div>
                     </div>
                     <div>
@@ -225,7 +228,36 @@
             document.getElementById('createUserModal').style.display = "none";
         }
 
+        function buscarPacientesDisponiveis(){
+            // const terapeutaId = document.getElementById('terapeuta_id').value;
+            const selectPaciente = document.getElementById('novo_paciente');
+
+            // Limpar as opções existentes
+            selectPaciente.innerHTML = '<option value="" disabled selected>Selecione um paciente</option>';
+
+            // Fazer requisição à API para obter pacientes disponíveis
+            fetch(`/pacientes_disponiveis`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        data.forEach(paciente => {
+                            const option = document.createElement('option');
+                            option.value = paciente.email;
+                            option.textContent = paciente.email;
+                            selectPaciente.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar pacientes disponíveis:', error);
+                });
+        };
+
         function openVincularPacientesModal(terapeutaId) {
+            buscarPacientesDisponiveis();
+
             document.getElementById('vincularPacientesModal').style.display = 'flex';
             document.getElementById('terapeuta_id').value = terapeutaId;
 

@@ -119,7 +119,7 @@ def login():
             cur.execute("""
                 SELECT id, email, senha, tipo_usuario 
                 FROM usuarios 
-                WHERE email = %s AND tipo_usuario = 'paciente'
+                WHERE email = %s AND tipo_usuario = 'paciente' AND status = true
             """, (email,))
             
             user = cur.fetchone()
@@ -171,7 +171,7 @@ def login_terapeuta():
             cur.execute("""
                 SELECT id, email, senha, tipo_usuario 
                 FROM usuarios 
-                WHERE email = %s AND tipo_usuario = 'terapeuta'
+                WHERE email = %s AND tipo_usuario = 'terapeuta' AND status = true
             """, (email,))
             
             user = cur.fetchone()
@@ -223,7 +223,7 @@ def login_admin():
             cur.execute("""
                 SELECT id, email, senha, tipo_usuario 
                 FROM usuarios 
-                WHERE email = %s AND tipo_usuario = 'admin'
+                WHERE email = %s AND tipo_usuario = 'admin' AND status = true
             """, (email,))
             
             user = cur.fetchone()
@@ -888,6 +888,52 @@ def get_pacientes(terapeuta_id):
         cur.close()
         conn.close()
 
+
+@app.route('/pacientes_disponiveis', methods=['GET'])
+@login_required
+def pacientes_disponiveis():
+    if not current_user.is_authenticated or not current_user.is_admin():  # Verifica se o usuário está autenticado e é admin
+        flash('Acesso não autorizado!', 'error')
+        return redirect(url_for('admin_usuarios'))
+
+    conn = conectar_bd()
+    cur = conn.cursor()
+
+    try:
+        # Obter IDs dos pacientes já vinculados
+        cur.execute("""
+            SELECT paciente_id FROM terapeutas_pacientes 
+            WHERE status = true
+        """)
+        vinculados = [row[0] for row in cur.fetchall()]
+
+        # Obter lista de pacientes disponíveis
+        if vinculados:
+            query = """
+                SELECT id, email FROM usuarios 
+                WHERE tipo_usuario = 'paciente' AND id NOT IN %s
+            """
+            cur.execute(query, (tuple(vinculados),))
+        else:
+            query = """
+                SELECT id, email FROM usuarios 
+                WHERE tipo_usuario = 'paciente'
+            """
+            cur.execute(query)
+
+        pacientes = cur.fetchall()
+        return jsonify([{'id': paciente[0], 'email': paciente[1]} for paciente in pacientes])
+
+    except Exception as e:
+        print(f"Erro ao buscar pacientes disponíveis: {e}")
+        flash( 'Erro ao buscar pacientes disponíveis!', 'error')
+        return redirect(url_for('admin_usuarios'))
+
+    finally:
+        cur.close()
+        conn.close()
+
+
 @app.route('/vincular_paciente', methods=['POST'])
 @login_required
 def vincular_paciente():
@@ -959,7 +1005,6 @@ def vincular_paciente():
     finally:
         cur.close()
         conn.close()
-
 
 @app.route('/remover_vinculo', methods=['POST'])
 @login_required
