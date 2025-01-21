@@ -1,26 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, current_app, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
-from flask_wtf import FlaskForm
-from werkzeug.security import check_password_hash
 import psycopg2
-from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
-from flask import Flask, render_template
-from flask_wtf import CSRFProtect, FlaskForm
+from flask_wtf import CSRFProtect, FlaskForm, CSRFProtect
 from utils.auth import admin_required, terapeuta_required
-from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from flask_wtf import FlaskForm, CSRFProtect
-from flask_login import LoginManager, login_required, current_user
 import os
-from wtforms import StringField, SelectField, TextAreaField, BooleanField, DateField, IntegerField
+from io import BytesIO
+from wtforms import StringField
 from wtforms.validators import DataRequired
-from wtforms import StringField, SelectField, FileField, BooleanField
-from wtforms.validators import DataRequired, Email
 from math import ceil
+from reportlab.pdfgen import canvas
 
 app = Flask(__name__, 
     static_folder='static',
@@ -888,7 +878,6 @@ def get_pacientes(terapeuta_id):
         cur.close()
         conn.close()
 
-
 @app.route('/pacientes_disponiveis', methods=['GET'])
 @login_required
 def pacientes_disponiveis():
@@ -932,7 +921,6 @@ def pacientes_disponiveis():
     finally:
         cur.close()
         conn.close()
-
 
 @app.route('/vincular_paciente', methods=['POST'])
 @login_required
@@ -1051,7 +1039,66 @@ def remover_vinculo():
         cur.close()
         conn.close()
 
+@app.route('/gerar_pdf/<user_email>')
+@login_required
+def gerar_pdf(user_email):
+    # Verificar se o usuário tem permissão para acessar
+    if not current_user.is_authenticated or not current_user.is_admin():
+        flash('Acesso não autorizado!', 'error')
+        return redirect(url_for('admin_usuarios'))
 
+    conn = conectar_bd()
+    cur = conn.cursor()
+
+    try:
+        # Consulta as informações do usuário pelo ID
+        cur.execute("""
+            SELECT email, nome_completo, cpf
+            FROM formulario_napese 
+            WHERE email = %s
+        """, (user_email,))
+        paciente = cur.fetchone()
+
+        if not paciente:
+            flash('Dados do paciente não encontrados!', 'error')
+            return redirect(url_for('admin_usuarios'))
+
+        # Dados do usuário
+        email, nome_completo, cpf = paciente
+
+        # Criar o PDF em memória
+        buffer = BytesIO()
+        c = canvas.Canvas(buffer)
+
+        # Título do PDF
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(200, 800, "Relatório do Usuário")
+
+        # Informações do usuário
+        c.setFont("Helvetica", 12)
+        c.drawString(50, 750, f"Email: {email}")
+        c.drawString(50, 730, f"Nome Completo: {nome_completo}")
+        c.drawString(50, 710, f"CPF: {cpf}")
+
+        # Finalizar o PDF
+        c.save()
+        buffer.seek(0)
+
+        # Retornar o PDF como resposta
+        return Response(
+            buffer,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment;filename=relatorio_paciente.pdf'}
+        )
+
+    except Exception as e:
+        print(f"Erro ao gerar PDF: {e}")
+        flash('Erro ao gerar PDF!', 'error')
+        return redirect(url_for('admin_usuarios'))
+
+    finally:
+        cur.close()
+        conn.close()
 
 # Rotas do Terapeuta
 @app.route('/terapeuta/dashboard')
@@ -1104,21 +1151,6 @@ def criar_usuarios_teste():
     finally:
         cur.close()
         conn.close()
-
-@app.route('/teste-admin')
-@admin_required
-def teste_admin():
-    return "Se você está vendo isso, você é um administrador!"
-
-@app.route('/teste-terapeuta')
-@terapeuta_required
-def teste_terapeuta():
-    return "Se você está vendo isso, você é um terapeuta!"
-
-@app.route('/teste-paciente')
-@login_required
-def teste_paciente():
-    return "Se você está vendo isso, você está logado como paciente!"
 
 # Configurações para upload de arquivos
 UPLOAD_FOLDER = 'uploads/cartas_recomendacao'
