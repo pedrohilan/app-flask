@@ -11,6 +11,9 @@ from wtforms import StringField
 from wtforms.validators import DataRequired
 from math import ceil
 from reportlab.pdfgen import canvas
+import datetime
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.units import inch
 
 app = Flask(__name__, 
     static_folder='static',
@@ -1051,9 +1054,9 @@ def gerar_pdf(user_email):
     cur = conn.cursor()
 
     try:
-        # Consulta as informações do usuário pelo ID
+        # Consulta as informações do usuário pelo email
         cur.execute("""
-            SELECT email, nome_completo, cpf
+            SELECT *
             FROM formulario_napese 
             WHERE email = %s
         """, (user_email,))
@@ -1063,26 +1066,72 @@ def gerar_pdf(user_email):
             flash('Dados do paciente não encontrados!', 'error')
             return redirect(url_for('admin_usuarios'))
 
-        # Dados do usuário
-        email, nome_completo, cpf = paciente
+        # Nome das colunas da tabela
+        colunas = [
+            "ID", "Data de Cadastro", "Email", "Nome Completo", "CPF", "CEP", "Telefones", "Cidade", "Estado",
+            "Preferência de Atendimento", "Renda Familiar", "Número de Dependentes", "Data de Nascimento", "Gênero",
+            "Profissão", "Conheceu pelo Site/Trauma", "Conheceu pelo Instagram", "Conheceu por Indicação",
+            "Conheceu pelos Treinamentos", "Conheceu pelo Google", "Conheceu por Redes Sociais", "Conheceu por Psicólogo",
+            "Conheceu por Outro Meio", "Sintomas Relevantes", "Medicações", "Substâncias Psicoativas", "Histórico de Acidentes",
+            "Histórico de Cirurgias", "Dores", "Acompanhamento Psiquiátrico", "Acompanhamento Psicológico", "Técnicas Corporais",
+            "Se Conhece", "Motivo da Procura", "Vivenciou Trauma", "Descrição do Evento", "Tempo Decorrido", "Envolveu Violência",
+            "Vivência Direta", "Vivência como Testemunha", "Vivência de Familiar ou Amigo", "Vivência no Trabalho",
+            "Sem Vivência", "Outra Vivência", "Impacto das Lembranças", "Impacto da Evitação", "Impacto nas Crenças",
+            "Impacto na Apreensão"
+        ]
+
+        # Ajustar dados do paciente
+        paciente_formatado = []
+        for coluna, valor in zip(colunas, paciente):
+            if isinstance(valor, bool):
+                valor = "Sim" if valor else "Não"
+            elif isinstance(valor, (datetime.date, datetime.datetime)):
+                valor = valor.strftime("%d/%m/%Y")
+            paciente_formatado.append((coluna, valor))
 
         # Criar o PDF em memória
         buffer = BytesIO()
-        c = canvas.Canvas(buffer)
+        c = canvas.Canvas(buffer, pagesize=letter)
 
         # Título do PDF
         c.setFont("Helvetica-Bold", 16)
-        c.drawString(200, 800, "Relatório do Usuário")
 
-        # Informações do usuário
-        c.setFont("Helvetica", 12)
-        c.drawString(50, 750, f"Email: {email}")
-        c.drawString(50, 730, f"Nome Completo: {nome_completo}")
-        c.drawString(50, 710, f"CPF: {cpf}")
+        # Definir a cor laranja para o fundo
+        c.setFillColorRGB(1, 0.647, 0)  # Cor laranja (RGB)
+
+        # Desenhar o retângulo com fundo laranja
+        c.rect(45, 750, 500, 40, stroke=0, fill=1)  # Ajustado para y=750
+
+        # Definir a cor do texto (branco)
+        c.setFillColorRGB(1, 1, 1)  # Cor branca
+
+        # Adicionar o texto centralizado no retângulo
+        c.drawCentredString(295, 770, "Relatório do Paciente")  # Ajuste da posição y para 770
+
+        # Estilização e início das informações
+        c.setFont("Helvetica-Bold", 12)
+        c.setFillColorRGB(0, 0, 0)  # Cor preta
+        y = 720  # Ajuste a posição inicial de y para que não sobreponha o título
+        for coluna, valor in paciente_formatado:
+            # Verificar se a posição y ultrapassa a margem inferior da página
+            if y < 50:  # Quebra de página
+                c.showPage()
+                c.setFont("Helvetica-Bold", 12)
+                y = 770  # Ajustar a posição no início da nova página
+
+            # Desenhar borda ao redor da pergunta e resposta
+            c.rect(45, y - 15, 500, 20, stroke=1, fill=0)
+
+            # Ajustar a posição do texto para ficar acima da borda
+            c.drawString(50, y - 10, f"{coluna}:")  # Ajustado para 5 pixels abaixo da borda
+            c.setFont("Helvetica", 12)
+            c.drawString(250, y - 10, str(valor))  # Ajustado para 5 pixels abaixo da borda
+            y -= 30  # Ajuste de espaçamento para a próxima linha
 
         # Finalizar o PDF
         c.save()
         buffer.seek(0)
+
 
         # Retornar o PDF como resposta
         return Response(
