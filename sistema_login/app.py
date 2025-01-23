@@ -1112,7 +1112,7 @@ def gerar_pdf(user_email):
         largura, altura = letter
 
         # Cabeçalho
-        c.setFillColor(HexColor("#FFA500"))  # Cor laranja
+        c.setFillColor(HexColor("#96d232"))  # Cor laranja
         c.rect(0, altura - 70, largura, 70, stroke=0, fill=1)  # Retângulo do cabeçalho
         c.setFillColor(colors.white)
         c.setFont("Helvetica-Bold", 20)
