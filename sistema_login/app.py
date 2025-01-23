@@ -10,10 +10,14 @@ from io import BytesIO
 from wtforms import StringField
 from wtforms.validators import DataRequired
 from math import ceil
-from reportlab.pdfgen import canvas
-import datetime
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import inch
+from reportlab.lib.colors import HexColor
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
+from io import BytesIO
+from flask import Response, flash, redirect, url_for
+from flask_login import current_user, login_required
+import datetime
 
 app = Flask(__name__, 
     static_folder='static',
@@ -1080,58 +1084,89 @@ def gerar_pdf(user_email):
             "Impacto na Apreensão"
         ]
 
-        # Ajustar dados do paciente
-        paciente_formatado = []
-        for coluna, valor in zip(colunas, paciente):
+        # Separar os dados em dois blocos
+        dados_paciente = [
+            (colunas[i], paciente[i]) for i in range(15)
+        ]
+
+        dados_internacao = [
+            (colunas[i], paciente[i]) for i in range(15, len(colunas))
+        ]
+
+        # Ajustar formatação dos dados
+        def formatar_valor(valor):
             if isinstance(valor, bool):
-                valor = "Sim" if valor else "Não"
+                return "Sim" if valor else "Não"
             elif isinstance(valor, (datetime.date, datetime.datetime)):
-                valor = valor.strftime("%d/%m/%Y")
-            paciente_formatado.append((coluna, valor))
+                return valor.strftime("%d/%m/%Y")
+            return valor
+
+        dados_paciente = [(coluna, formatar_valor(valor)) for coluna, valor in dados_paciente]
+        dados_internacao = [(coluna, formatar_valor(valor)) for coluna, valor in dados_internacao]
 
         # Criar o PDF em memória
         buffer = BytesIO()
         c = canvas.Canvas(buffer, pagesize=letter)
 
-        # Título do PDF
-        c.setFont("Helvetica-Bold", 16)
+        # Configurações gerais
+        largura, altura = letter
 
-        # Definir a cor laranja para o fundo
-        c.setFillColorRGB(1, 0.647, 0)  # Cor laranja (RGB)
+        # Cabeçalho
+        c.setFillColor(HexColor("#FFA500"))  # Cor laranja
+        c.rect(0, altura - 70, largura, 70, stroke=0, fill=1)  # Retângulo do cabeçalho
+        c.setFillColor(colors.white)
+        c.setFont("Helvetica-Bold", 20)
+        c.drawCentredString(largura / 2, altura - 50, "Relatório do Paciente")
 
-        # Desenhar o retângulo com fundo laranja
-        c.rect(45, 750, 500, 40, stroke=0, fill=1)  # Ajustado para y=750
+        # Renderizar seção "Dados do Paciente"
+        y = altura - 100
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(colors.black)
+        c.drawString(50, y, "Dados do Paciente")
+        y -= 10
+        c.line(50, y, largura - 50, y)
+        y -= 30
 
-        # Definir a cor do texto (branco)
-        c.setFillColorRGB(1, 1, 1)  # Cor branca
-
-        # Adicionar o texto centralizado no retângulo
-        c.drawCentredString(295, 770, "Relatório do Paciente")  # Ajuste da posição y para 770
-
-        # Estilização e início das informações
-        c.setFont("Helvetica-Bold", 12)
-        c.setFillColorRGB(0, 0, 0)  # Cor preta
-        y = 720  # Ajuste a posição inicial de y para que não sobreponha o título
-        for coluna, valor in paciente_formatado:
-            # Verificar se a posição y ultrapassa a margem inferior da página
+        c.setFont("Helvetica", 12)
+        for coluna, valor in dados_paciente:
             if y < 50:  # Quebra de página
                 c.showPage()
-                c.setFont("Helvetica-Bold", 12)
-                y = 770  # Ajustar a posição no início da nova página
+                c.setFont("Helvetica-Bold", 14)
+                c.setFillColor(colors.black)
+                c.drawString(50, altura - 100, "Dados do Paciente")
+                y = altura - 130
+                c.setFont("Helvetica", 12)  # Resetar fonte após o título
+            c.drawString(50, y, f"{coluna}: {valor}")
+            y -= 20
 
-            # Desenhar borda ao redor da pergunta e resposta
-            c.rect(45, y - 15, 500, 20, stroke=1, fill=0)
+        # Renderizar seção "Dados da Internação"
+        if y < 100:
+            c.showPage()
+            y = altura - 100
 
-            # Ajustar a posição do texto para ficar acima da borda
-            c.drawString(50, y - 10, f"{coluna}:")  # Ajustado para 5 pixels abaixo da borda
-            c.setFont("Helvetica", 12)
-            c.drawString(250, y - 10, str(valor))  # Ajustado para 5 pixels abaixo da borda
-            y -= 30  # Ajuste de espaçamento para a próxima linha
+        y -= 10
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(colors.black)
+        c.drawString(50, y, "Outras Informações")
+        y -= 10
+        c.line(50, y, largura - 50, y)
+        y -= 30
+
+        c.setFont("Helvetica", 12)
+        for coluna, valor in dados_internacao:
+            if y < 50:  # Quebra de página
+                c.showPage()
+                c.setFont("Helvetica-Bold", 14)
+                c.setFillColor(colors.black)
+                # c.drawString(50, altura - 100, "Dados da Internação")
+                y = altura - 50
+                c.setFont("Helvetica", 12)  # Resetar fonte após o título
+            c.drawString(50, y, f"{coluna}: {valor}")
+            y -= 20
 
         # Finalizar o PDF
         c.save()
         buffer.seek(0)
-
 
         # Retornar o PDF como resposta
         return Response(
